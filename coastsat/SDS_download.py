@@ -28,6 +28,10 @@ import pytz
 import pickle
 from skimage import morphology, transform
 from scipy import ndimage
+import rasterio
+import rasterio.mask
+import pyproj, shapely
+from shapely.geometry import Polygon
 
 # CoastSat modules
 from coastsat import SDS_preprocess, SDS_tools, gdal_merge
@@ -195,8 +199,8 @@ def retrieve_images(inputs):
                     try:    
                         fn_ms, fn_QA = download_tif(image_ee,ee_region,bands['ms'],fp_ms,satname) 
                         break
-                    except:
-                        print('\nDownload failed, trying again...')
+                    except Exception as E:
+                        print('\nDownload failed, recieved error:', E, ' \ntrying again...')
                         count += 1
                         if count > 100:
                             raise Exception('Too many attempts, crashed while downloading image %s'%im_meta['id'])
@@ -232,6 +236,8 @@ def retrieve_images(inputs):
                 
                 # delete original downloads
                 for _ in [fn_ms,fn_QA]: os.remove(_)
+                if os.path.exists(os.path.join(fp_ms,'temp.tif')):
+                    os.remove(os.path.join(fp_ms,'temp.tif'))
                 
                 # add metadata in .txt file (save at the end of the loop)
                 filename_txt = im_fn['ms'].replace('_ms','').replace('.tif','')
@@ -266,8 +272,8 @@ def retrieve_images(inputs):
                         fn_ms, fn_QA = download_tif(image_ee,ee_region_ms,bands['ms'],fp_ms,satname)
                         fn_pan = download_tif(image_ee,ee_region_pan,bands['pan'],fp_pan,satname)
                         break
-                    except:
-                        print('\nDownload failed, trying again...')
+                    except Exception as E:
+                        print('\nDownload failed, recieved error:', E, ' \ntrying again...')
                         count += 1
                         if count > 100:
                             raise Exception('Too many attempts, crashed while downloading image %s'%im_meta['id'])
@@ -309,11 +315,16 @@ def retrieve_images(inputs):
                     os.rename(fn_pan,os.path.join(fp_pan,im_fn['pan']))  
                 # delete original downloads
                 for _ in [fn_ms,fn_QA]: os.remove(_)
+                if os.path.exists(os.path.join(fp_ms,'temp.tif')):
+                    os.remove(os.path.join(fp_ms,'temp.tif'))
+                if os.path.exists(os.path.join(fp_pan,'temp.tif')):
+                    os.remove(os.path.join(fp_pan,'temp.tif'))
                 
                 # metadata for .txt file
                 filename_txt = im_fn['ms'].replace('_ms','').replace('.tif','')
                 metadict = {'filename':im_fn['ms'],'acc_georef':georef_accs[i],
                             'epsg':im_epsg[i],'image_quality':im_quality[i]}
+                os.remove(os.path.join(filepath,'temp.tif'))
 
             #=============================================================================================#
             # Sentinel-2 download
@@ -341,8 +352,8 @@ def retrieve_images(inputs):
                         fn_swir = download_tif(image_ee,ee_region_swir,bands['swir'],fp_swir,satname)
                         fn_QA = download_tif(image_ee,ee_region_mask,bands['mask'],fp_mask,satname)
                         break
-                    except:
-                        print('\nDownload failed, trying again...')
+                    except Exception as E:
+                        print('\nDownload failed, recieved error:', E, ' \ntrying again...')
                         count += 1
                         if count > 100:
                             raise Exception('Too many attempts, crashed while downloading image %s'%im_meta['id'])
@@ -380,7 +391,13 @@ def retrieve_images(inputs):
                 for _ in [fn_swir,fn_QA]: os.remove(_)  
                 # rename the multispectral band file
                 os.rename(fn_ms,os.path.join(fp_ms, im_fn['ms']))
-                                
+                if os.path.exists(os.path.join(fp_ms,'temp.tif')):
+                    os.remove(os.path.join(fp_ms,'temp.tif'))
+                if os.path.exists(os.path.join(fp_swir,'temp.tif')):
+                    os.remove(os.path.join(fp_swir,'temp.tif'))
+                if os.path.exists(os.path.join(fp_mask,'temp.tif')):
+                    os.remove(os.path.join(fp_mask,'temp.tif'))
+                    
                 # metadata for .txt file
                 filename_txt = im_fn['ms'].replace('_ms','').replace('.tif','')
                 metadict = {'filename':im_fn['ms'],'acc_georef':georef_accs[i],
@@ -677,18 +694,20 @@ def adjust_polygon(polygon,proj):
     # adjust polygon to match image coordinates so that there is no resampling
     polygon_ee = ee.Geometry.Polygon(polygon)    
     # convert polygon to image coordinates
-    polygon_coords = np.array(ee.List(polygon_ee.transform(proj, 1).coordinates().get(0)).getInfo())
-    # make it a rectangle
-    xmin = np.min(polygon_coords[:,0])
-    ymin = np.min(polygon_coords[:,1])
-    xmax = np.max(polygon_coords[:,0])
-    ymax = np.max(polygon_coords[:,1])
-    # round to the closest pixels
-    rect = [np.floor(xmin), np.floor(ymin), 
-            np.ceil(xmax),  np.ceil(ymax)]
-    # convert back to epsg 4326
-    ee_region = ee.Geometry.Rectangle(rect, proj, True, False).transform("EPSG:4326")
+    #polygon_coords = np.array(ee.List(polygon_ee.transform(proj, 1).coordinates().get(0)).getInfo())
+    ## make it a rectangle
+    #xmin = np.min(polygon_coords[:,0])
+    #ymin = np.min(polygon_coords[:,1])
+    #xmax = np.max(polygon_coords[:,0])
+    #ymax = np.max(polygon_coords[:,1])
+    ## round to the closest pixels
+    #rect = [np.floor(xmin), np.floor(ymin), 
+    #        np.ceil(xmax),  np.ceil(ymax)]
+    ## convert back to epsg 4326
+    #ee_region = ee.Geometry.Rectangle(rect, proj, True, False).transform("EPSG:4326")
     
+    # OVERRIDE: Enforce clipping behavior for non-aligned polygons
+    ee_region = ee.Geometry.Polygon(polygon).transform("EPSG:4326")
     return ee_region
     
 def download_tif(image, polygon, bands, filepath, satname):
@@ -755,7 +774,23 @@ def download_tif(image, polygon, bands, filepath, satname):
                 # build a VRT and merge the bands (works the same with pan band)
                 outds = gdal.BuildVRT(os.path.join(filepath,'temp.vrt'),
                                       fn_tifs, separate=True)
-                outds = gdal.Translate(os.path.join(filepath,filename), outds) 
+                outds = gdal.Translate(os.path.join(filepath,'temp.tif'), outds)
+                
+                #Clip with polygon using rasterio since ee.downloadURL ignores clipping
+                with rasterio.open(os.path.join(filepath,'temp.tif')) as src:
+                    epsg = src.crs.to_epsg()
+                    transformer = pyproj.Transformer.from_proj(pyproj.Proj(init='epsg:4326'), pyproj.Proj(init='epsg:' + str(epsg)))
+                    shapely_polygon = Polygon(polygon.coordinates().getInfo()[0])
+                    projected = shapely.ops.transform(transformer.transform, shapely_polygon)
+                    out_image, out_transform = rasterio.mask.mask(src, [projected], crop=True)
+                    out_meta = src.meta
+                    out_meta.update({"driver": "GTiff",
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
+                         "transform": out_transform})
+                with rasterio.open(os.path.join(filepath,filename), "w", **out_meta) as dest:
+                    dest.write(out_image)
+                
                 # remove temporary files
                 os.remove(os.path.join(filepath,'temp.vrt'))
                 for _ in fn_tifs: os.remove(_)
@@ -779,7 +814,23 @@ def download_tif(image, polygon, bands, filepath, satname):
                 # build a VRT and merge the bands (works the same with pan band)
                 outds = gdal.BuildVRT(os.path.join(filepath,'temp.vrt'),
                                       fn_tifs, separate=True)
-                outds = gdal.Translate(os.path.join(filepath,filename), outds) 
+                outds = gdal.Translate(os.path.join(filepath,'temp.tif'), outds)
+                
+                #Clip with polygon using rasterio since ee.downloadURL ignores clipping
+                with rasterio.open(os.path.join(filepath,'temp.tif')) as src:
+                    epsg = src.crs.to_epsg()
+                    transformer = pyproj.Transformer.from_proj(pyproj.Proj(init='epsg:4326'), pyproj.Proj(init='epsg:' + str(epsg)))
+                    shapely_polygon = Polygon(polygon.coordinates().getInfo()[0])
+                    projected = shapely.ops.transform(transformer.transform, shapely_polygon)
+                    out_image, out_transform = rasterio.mask.mask(src, [projected], crop=True)
+                    out_meta = src.meta
+                    out_meta.update({"driver": "GTiff",
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
+                         "transform": out_transform})
+                with rasterio.open(os.path.join(filepath,filename), "w", **out_meta) as dest:
+                    dest.write(out_image)
+                
                 # remove temporary files
                 os.remove(os.path.join(filepath,'temp.vrt'))
                 for _ in fn_tifs: os.remove(_)

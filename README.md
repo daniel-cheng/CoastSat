@@ -67,6 +67,11 @@ The toolbox has four main functionalities:
 
 To run the toolbox you first need to install the required Python packages in an environment. To do this we will use **Anaconda**, which can be downloaded freely [here](https://www.anaconda.com/download/).
 
+```
+wget "https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-$(uname)-$(uname -m).sh"
+bash Mambaforge-$(uname)-$(uname -m).sh
+```
+
 Once you have it installed on your PC, open the Anaconda prompt (in Mac and Linux, open a terminal window) and use the `cd` command (change directory) to go the folder where you have downloaded this repository.
 
 Create a new environment named `coastsat` with all the required packages by entering these commands in succession:
@@ -76,6 +81,15 @@ conda create -n coastsat python=3.8
 conda activate coastsat
 conda install -c conda-forge geopandas earthengine-api scikit-image matplotlib astropy notebook -y
 pip install pyqt5
+
+## coastsat dependencies
+conda install -c conda-forge earthengine-api astropy -y
+conda install gdal geopandas scikit-image notebook pyqt -y
+conda install -c conda-forge “numpy>=1.16.5, <=1.23.0" -y
+
+## additional coastseg dependencies
+conda install ipython cartopy  tqdm  -y
+conda install -c conda-forge simplekml leafmap pydensecrf h5py rasterio opencv-python -y
 ```
 
 All the required packages have now been installed in an environment called `coastsat`. Always make sure that the environment is activated with:
