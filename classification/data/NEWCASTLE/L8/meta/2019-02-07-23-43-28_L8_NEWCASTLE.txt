@@ -1,0 +1,4 @@
+filename	2019-02-07-23-43-28_L8_NEWCASTLE_ms.tif
+acc_georef	5.96
+epsg	32656
+image_quality	9

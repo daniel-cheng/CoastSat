@@ -1,0 +1,4 @@
+filename	2022-07-28-00-06-15_S2_NARRA_ms.tif
+acc_georef	1
+epsg	32756
+image_quality	PASSED

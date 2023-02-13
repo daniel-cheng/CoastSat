@@ -1,16 +1,3 @@
 *.pyc
-*.mat
-*.tif
-*.png
-*.PNG
-*.jpeg
-*.mp4
-*.jpg
-*.pkl
-*.kml
-*.txt
-*.geojson
 *checkpoint.ipynb
-*.csv
-*.xml
 /deprecated

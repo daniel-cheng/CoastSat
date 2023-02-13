@@ -1,0 +1,4 @@
+filename	2019-03-11-23-42-08_L8_BYRON_ms.tif
+acc_georef	4.215
+epsg	32656
+image_quality	9

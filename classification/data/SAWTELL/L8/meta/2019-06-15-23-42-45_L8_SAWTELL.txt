@@ -1,0 +1,4 @@
+filename	2019-06-15-23-42-45_L8_SAWTELL_ms.tif
+acc_georef	8.476
+epsg	32656
+image_quality	9

@@ -1,0 +1,4 @@
+filename	2019-04-28-23-41-55_L8_BYRON_ms.tif
+acc_georef	6.176
+epsg	32656
+image_quality	9

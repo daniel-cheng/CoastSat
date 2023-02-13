@@ -1,0 +1,4 @@
+filename	2019-05-14-23-42-05_L8_BYRON_ms.tif
+acc_georef	6.182
+epsg	32656
+image_quality	9

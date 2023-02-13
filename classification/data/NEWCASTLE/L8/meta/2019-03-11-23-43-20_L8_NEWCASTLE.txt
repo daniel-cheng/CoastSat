@@ -1,0 +1,4 @@
+filename	2019-03-11-23-43-20_L8_NEWCASTLE_ms.tif
+acc_georef	4.217
+epsg	32656
+image_quality	9

@@ -1,0 +1,4 @@
+filename	2019-02-07-23-42-40_L8_SAWTELL_ms.tif
+acc_georef	6.629
+epsg	32656
+image_quality	9
